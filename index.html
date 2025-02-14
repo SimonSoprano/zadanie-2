@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+    <meta charset="UTF-8" >
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Zadanie 2</title>
+    <meta name="description" content="Zadanie numer 2 wykonane przez Semena Sapronova">
+</head>
+<style>
+
+    .btn{
+        border: 1px solid teal;
+        cursor: pointer;
+        width: fit-content;
+        padding: 5px;
+        margin: 5px;
+
+    }
+    .layout{
+        display: flex;
+        justify-content: center;
+    }
+    #form-container{
+        margin-top: 10vh;
+    }
+    #form-container form{
+        display: flex;
+        flex-direction: row;
+    }
+    #form-container label {
+        margin-block: auto;
+        font-size: 1.2em;
+    }
+    #modal{
+        position:fixed;
+        top:0;
+        right: 0;
+        left:0;
+        bottom: 0;
+        box-shadow: 0 0 10px rgba(55, 56, 57, 0.2);
+        border-inline: 3px solid #73b6e6;
+        border-radius: 10px ;
+        width: fit-content;
+        height: fit-content;
+        margin-block: auto;
+        margin-inline: auto;
+        padding: 10px;
+        background: white;
+    }
+    .model-info{
+        color: black;
+    }
+    .model-info-label{
+        color: gray;
+        border-bottom: 1px solid gray;
+        width: 100%;
+    }
+    .close-modal{
+        position: absolute;
+        right: 10px;
+        cursor: pointer;
+        border-radius: 3px;
+        background: #fad7a9;
+        padding: 10px;
+    }
+    .input{
+        padding: 5px;
+        font-size: 1.2em;
+    }
+</style>
+<body>
+    <div class="layout">
+        <div class="container">
+            <div id="form-container">
+                <form >
+                    <label for="id" > Wprowadż ID posta:</label>
+                    <input id="id" class="input" name="id" type="number"/>
+
+                    <div class="btn" onclick="getPost(this.parentElement)"> Znależć post</div>
+                </form>
+                
+            </div>
+            <div id="modal" style="display: none">
+                <div class="close-modal" onclick="closeModal(this.parentElement)">x</div>
+                <div class="modal-container">
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var modal ;
+
+        const api_url = "https://jsonplaceholder.typicode.com";
+        function openModal(modal) {
+          modal.style.display = 'flex'
+        }
+        function closeModal(modal) {
+            modal.style.display = 'none'
+        }
+
+        async function getPost(form){
+            /*
+               * Glowna logika otrzymania postu
+             */
+            let id = getJSONfromNodes(form).id;
+
+            if(id){
+                try{
+                    //dostajemy post jako JSON
+                    let post = await getResponseByFetch(`${api_url}/posts/${id}`)
+                    //uzupewniamy dane do tabeli relacyjnej bo api nie wspiera expand
+                    let completedPost = await completePost(post);
+                    //render do widoku
+                    showPost(completedPost);
+                    //wszystkim podziekował, koniec =)
+                }catch (error) {
+                    let message = {id: id , error: error.toString()};
+                    showPost(message);
+                }
+
+            }
+        }
+
+        function showPost(post){
+            modal.lastElementChild.innerHTML = createHtmlByModel(post).innerHTML;
+            openModal(modal);
+        }
+        function createHtmlByModel(model){
+            /*
+                * Tworzymy element w dom na podstawie modelu
+             */
+            let keys = Object.keys(model);
+            let container = document.createElement('div');
+            container.className = 'model-wrapper';
+            let element = document.createElement('h1');
+            element.innerText = "Post z id:"+model.id;
+            container.append(element);
+            for (let i = 0; i < keys.length; i++) {
+                let label = document.createElement('label');
+                label.for = keys[i];
+                label.className = 'model-info-label';
+                label.innerHTML = keys[i] + ' :';
+                container.append(label);
+
+                let element = document.createElement('p');
+                element.innerText = model[ keys[i] ];
+                element.className = 'model-info';
+                element.id = keys[i] ;
+                container.append(element);
+
+
+            }
+            return container;
+        }
+        async function getResponseByFetch(url){
+            let res = await fetch(url);
+            if(!res.ok){
+                throw new Error(`${res.status} `);
+            }
+            return res.json();
+        }
+        async function completePost(post){
+            if(post && post.userId){
+                let userID = post.userId;
+                let user = await getResponseByFetch(`${api_url}/users/${post.userId}`)
+                post['userId'] = user.name;
+                return post;
+            }
+        }
+        function getJSONfromNodes(parent){
+            let result = {};
+             parent.querySelectorAll("input","textarea","select").forEach(field => {
+                 result[field.name] = field.value;
+             })
+            return result;
+        }
+        
+        document.addEventListener('DOMContentLoaded',(e)=>{
+            //inicializacja
+            modal = document.getElementById("modal");
+            
+        })
+    </script>
+</body>
+</html>
